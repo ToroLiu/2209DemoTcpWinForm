@@ -20,7 +20,8 @@ namespace winFormClient
         private readonly String okToken = "<|OK|>";
         private readonly String fileToken = "<|FILE|>";
         private readonly String getToken = "<|GET|>";
-
+        private readonly String eofToken = "<|EOF|>";
+        
         public SocketClient(string ip, int port, string fileName, string localFilePath)
         {
             this.ip = ip;
@@ -37,12 +38,19 @@ namespace winFormClient
 
             return new IPEndPoint(ipAddress, port);
         }
-                
-        public async void startRequest(MessageDelegate msgCallback) {
-            IPEndPoint endPoint = createIPEndPoint(this.ip, this.port);
 
-            using Socket client = new(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        
+        private Socket socket = null;
+
+
+        public async void startRequest(MessageDelegate msgCallback) {
+
+            if (this.socket == null) { 
+                this.socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            }
+
+            Socket client = this.socket;
+
+            IPEndPoint endPoint = createIPEndPoint(this.ip, this.port);
             await client.ConnectAsync(endPoint);
 
             // Stage 1, Request server file
@@ -53,6 +61,9 @@ namespace winFormClient
 
             // Stage 2, Download file data
             await this.downloadFile(client, msgCallback);
+
+            client.Shutdown(SocketShutdown.Both);
+            client.Disconnect(true);
         }
         
         private async Task<Boolean> sendMessage(Socket client, String token, String msg, Boolean chkResp, MessageDelegate msgCallback) { 
@@ -101,24 +112,28 @@ namespace winFormClient
             {
                 try
                 {
-                    var fileBuf = new byte[1024];
+                    var fileBuf = new byte[2048];
                     var fileReceived = await client.ReceiveAsync(fileBuf, SocketFlags.None);
-                    totalReceived += fileReceived;
+                    var receivdMsg = Encoding.UTF8.GetString(fileBuf, 0, fileReceived);
 
-                    if (fileReceived <= 0)
-                    {
+                    if (receivdMsg != null && receivdMsg.Equals(eofToken)) {
+                        msgCallback("[MSG] Receive EOF Token.");
                         break;
                     }
+                    totalReceived += fileReceived;
 
-                    destStream.Write(fileBuf, 0, fileReceived);
+                    if (fileReceived > 0)
+                    {
+                        destStream.Write(fileBuf, 0, fileReceived);
+                    }
                 }
-                catch (Exception ex) {
+                catch (Exception ex)
+                {
                     msgCallback("[MSG] Failed to download file. Exception. " + ex.Message);
                     return false;
                 }
-                
             } while (true);
-
+            
             msgCallback("[MSG] Success to download file. total #bytes: " + totalReceived.ToString());
             return true;
         }

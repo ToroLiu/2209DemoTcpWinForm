@@ -36,15 +36,16 @@ namespace winFormClient
         void messageDelegate(String message) {
             Debug.WriteLine("[Client]" + message);
 
-            this.curStatusText += Environment.NewLine + message;
             if (this.textBox_ResponseOfServer.InvokeRequired)
             {
                 this.textBox_ResponseOfServer.Invoke(() =>
                 {
+                    this.curStatusText += Environment.NewLine + message;
                     this.textBox_ResponseOfServer.Text = this.curStatusText; 
                 });
             }
             else {
+                this.curStatusText += Environment.NewLine + message;
                 this.textBox_ResponseOfServer.Text = this.curStatusText;
             }
             

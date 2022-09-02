@@ -22,8 +22,11 @@ namespace winFormServer
         private String requstFile;
 
         private readonly int serverPort = 8080;
+
         private readonly String okToken = "<|OK|>";
         private readonly String fileToken = "<|FILE|>";
+        private readonly String getToken = "<|GET|>";
+        private readonly String eofToken = "<|EOF|>";
 
         private Boolean working = true;
         public SocketServer() { }
@@ -59,43 +62,66 @@ namespace winFormServer
                 var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
                 var receivedMsg = Encoding.UTF8.GetString(buffer, 0, received);
 
-                msgCallback("[MSG] Receive message: " + receivedMsg);
+                //msgCallback("[MSG] Receive message: " + receivedMsg);
 
-                if (receivedMsg.IndexOf(fileToken) <= -1) {
+                if (receivedMsg.StartsWith(fileToken))
+                {
+
+                    String filePath = receivedMsg.Replace(fileToken, "");
+
+                    this.requstFile = filePath;
+                    clientCallback(TextType.RequestFile, filePath);
+
+                    checkFileExist(handler, filePath, msgCallback);
+
+                }
+                else if (receivedMsg.StartsWith(getToken))
+                {
+                    // Prepare to send file bytes
+                    String filePath = receivedMsg.Replace(getToken, "");
+                    sendFile(handler, filePath, msgCallback);
+                }
+                else if (receivedMsg.Equals("")) {
+                    Thread.Sleep(300);
+                } else { 
                     msgCallback("[ERROR] Invalid client request");
-                    continue;
                 }
-
-                String filePath = receivedMsg.Replace(fileToken, "");
-                this.requstFile = filePath;
-                clientCallback(TextType.RequestFile, filePath);
-
-                Boolean isFileExist = File.Exists(filePath);
-                if (isFileExist == false) {
-                    this.sendResponse(handler, "[ERROR] Request file not found.");
-                    msgCallback("[ERROR] Request file not found.");
-                    continue;
-                }
-
-                // File exists, get file bytes, and sent to client.
-                this.sendResponse(handler, okToken);
-
-                Thread.Sleep(1000);
-
-                using FileStream srcStream = new(filePath, FileMode.Open);
-
-                int totalBytes = 0;
-                var fileBuf = new byte[2048];
-                int bytesRead;
-                while ((bytesRead = srcStream.Read(fileBuf, 0, fileBuf.Length)) > 0) {
-                    var fileSentBytes = handler.Send(fileBuf, SocketFlags.None);
-                    totalBytes += fileSentBytes;
-                }
-
-                msgCallback("[MSG] Success sent file. #bytes: " + totalBytes.ToString());
             }
 
             msgCallback("[MSG] Server stop working.");
+        }
+        private Boolean checkFileExist(Socket handler, String filePath, MessageCallback msgCallback) {
+            
+            Boolean isFileExist = File.Exists(filePath);
+            if (isFileExist == false)
+            {
+                this.sendResponse(handler, "[ERROR] Request file not found.");
+                msgCallback("[ERROR] Request file not found.");
+                return false;
+            }
+
+            // File exists, get file bytes, and sent to client.
+            this.sendResponse(handler, okToken);
+            return true;
+        }
+
+        private Boolean sendFile(Socket handler, String filePath, MessageCallback msgCallback)
+        {
+            using FileStream srcStream = new(filePath, FileMode.Open);
+
+            int totalBytes = 0;
+            var fileBuf = new byte[2048];
+            int bytesRead;
+            while ((bytesRead = srcStream.Read(fileBuf, 0, fileBuf.Length)) > 0)
+            {
+                var fileSentBytes = handler.Send(fileBuf, SocketFlags.None);
+                totalBytes += fileSentBytes;
+            }
+
+            msgCallback("[MSG] Success sent file. #bytes: " + totalBytes.ToString());
+
+            this.sendResponse(handler, eofToken);
+            return true;
         }
 
         Boolean sendResponse(Socket socket, String response) {
