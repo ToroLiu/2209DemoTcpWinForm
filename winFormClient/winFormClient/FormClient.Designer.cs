@@ -129,6 +129,7 @@
             this.textBox_ResponseOfServer.Location = new System.Drawing.Point(45, 239);
             this.textBox_ResponseOfServer.Multiline = true;
             this.textBox_ResponseOfServer.Name = "textBox_ResponseOfServer";
+            this.textBox_ResponseOfServer.ReadOnly = true;
             this.textBox_ResponseOfServer.Size = new System.Drawing.Size(441, 175);
             this.textBox_ResponseOfServer.TabIndex = 2;
             // 
