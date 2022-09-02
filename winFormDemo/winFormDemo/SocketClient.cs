@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,20 +16,17 @@ namespace winFormDemo
     {
         private String ip;
         private int port;
-        private String fileName;
-        private String localFilePath;
-
+        
         private readonly String okToken = "<|OK|>";
         private readonly String fileToken = "<|FILE|>";
         private readonly String getToken = "<|GET|>";
         private readonly String eofToken = "<|EOF|>";
-        
-        public SocketClient(string ip, int port, string fileName, string localFilePath)
+        private readonly String msgToken = "<|MSG|>";
+
+        public SocketClient(string ip, int port)
         {
             this.ip = ip;
             this.port = port;
-            this.fileName = fileName;
-            this.localFilePath = localFilePath;
         }
 
         private IPEndPoint createIPEndPoint(String ip, int port) {
@@ -39,7 +38,8 @@ namespace winFormDemo
             return new IPEndPoint(ipAddress, port);
         }
 
-        public async void startRequest(MessageDelegate msgCallback) {
+
+        public async void startRequest(String fileName, String localFilePath, MessageDelegate msgCallback) {
       
             Socket client = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -48,15 +48,15 @@ namespace winFormDemo
                 IPEndPoint endPoint = createIPEndPoint(this.ip, this.port);
                 await client.ConnectAsync(endPoint);
 
-                // Stage 1, Request server file
-                var sendOk = await this.sendMessage(client, fileToken, this.fileName, true, msgCallback);
+                // Stage 1, Check file exist. Report error if file not found. 
+                var sendOk = await this.sendMessage(client, fileToken, fileName, true, msgCallback);
                 if (sendOk == false)
                 {
                     return;
                 }
 
                 // Stage 2, Download file data
-                await this.downloadFile(client, msgCallback);
+                _ = await this.downloadFile(client, fileName, localFilePath, msgCallback);
 
                 // Stage 3, Notify Server EOF
                 _ = await this.sendMessage(client, eofToken, "", false, msgCallback);
@@ -68,6 +68,7 @@ namespace winFormDemo
                 msgCallback("[ERROR] Exception: " + e.Message);
             }
         }
+
         
         private async Task<Boolean> sendMessage(Socket client, String token, String msg, Boolean chkResp, MessageDelegate msgCallback) { 
             var buffer = new byte[1024];
@@ -99,13 +100,14 @@ namespace winFormDemo
             return false;
         }
 
-        private async Task<Boolean> downloadFile(Socket client, MessageDelegate msgCallback) {
-            msgCallback("[Info] Prepare to receive data");
+        private async Task<Boolean> downloadFile(Socket client, String fileName, String localFilePath,  MessageDelegate msgCallback) {
+            
+            String fName = Path.GetFileName(fileName);
+            String destPath = Path.Combine(localFilePath, fName);
 
-            String fName = Path.GetFileName(this.fileName);
-            String destPath = Path.Combine(this.localFilePath, fName);
+            msgCallback("[Info] Prepare to download file: " + fName);
 
-            _ = await this.sendMessage(client, getToken, this.fileName, false, msgCallback);
+            _ = await this.sendMessage(client, getToken, fileName, false, msgCallback);
 
             using FileStream destStream = new(destPath, FileMode.Create);
 

@@ -28,6 +28,8 @@ namespace winFormDemo
         private readonly String getToken = "<|GET|>";
         private readonly String eofToken = "<|EOF|>";
 
+        private readonly String msgToken = "<|MSG|>";
+
         private Boolean working = true;
         public SocketServer() {
             this.serverPort = 8080;
@@ -39,8 +41,7 @@ namespace winFormDemo
         public void stopServer() {
             this.working = false;
         }
-       
-        public async void startServer(MessageCallback msgCallback, ClientCallback clientCallback) { 
+       public async void startServer(MessageCallback msgCallback, ClientCallback clientCallback) { 
           
             using Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -92,10 +93,17 @@ namespace winFormDemo
                         msgCallback("[Info] Receive EOF token. END client communication.");
                         break;
                     }
-                    else if (receivedMsg.Equals("")) {
+                    else if (receivedMsg.Equals(msgToken)) {
+                        String msg = receivedMsg.Replace(msgToken, "");
+                        msgCallback("[Info] Receive message: " + msg);
+                        this.sendResponse(handler, okToken);
+                    }
+                    else if (receivedMsg.Equals(""))
+                    {
                         Thread.Sleep(300);
                     }
-                    else { 
+                    else
+                    {
                         msgCallback("[ERROR] Invalid client request");
                     }
                 }
@@ -120,7 +128,6 @@ namespace winFormDemo
             this.sendResponse(handler, okToken);
             return true;
         }
-
         private Boolean sendFile(Socket handler, String filePath, MessageCallback msgCallback)
         {
             using FileStream srcStream = new(filePath, FileMode.Open);

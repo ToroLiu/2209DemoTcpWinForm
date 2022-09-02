@@ -32,8 +32,8 @@ namespace DemoClient
 
             try
             {
-                this.socketClient = new SocketClient(ip, portNumber, fileName, localPath);
-                this.socketClient.startRequest(this.messageDelegate);
+                this.socketClient = new SocketClient(ip, portNumber);
+                this.socketClient.startRequest(fileName, localPath, this.messageDelegate);
             }
             catch (Exception ex) {
                 this.messageDelegate("[ERROR] Exception. " + ex.Message);
