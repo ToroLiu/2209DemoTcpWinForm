@@ -43,52 +43,60 @@ namespace winFormServer
             listener.Bind(endPoint);
             listener.Listen(100);
 
-            msgCallback("[MSG] Server start working.");
+            msgCallback("[Info] Server start working.");
 
-            var handler = await listener.AcceptAsync();
-            var clientEndPoint = handler.RemoteEndPoint;
-            if (clientEndPoint != null) {
-                IPEndPoint clientEP = (IPEndPoint)clientEndPoint;
-                this.clientIP = clientEP.Address.ToString();
-                this.clientPort = clientEP.Port;
+            while (this.working) { 
+                var handler = listener.Accept();
+                var clientEndPoint = handler.RemoteEndPoint;
+                if (clientEndPoint != null) {
+                    IPEndPoint clientEP = (IPEndPoint)clientEndPoint;
+                    this.clientIP = clientEP.Address.ToString();
+                    this.clientPort = clientEP.Port;
 
-                clientCallback(TextType.ClientIp, this.clientIP);
-                clientCallback(TextType.ClientPort, this.clientPort.ToString());
+                    clientCallback(TextType.ClientIp, this.clientIP);
+                    clientCallback(TextType.ClientPort, this.clientPort.ToString());
+                }
+                msgCallback("[Info] Client connected ...");
+
+                while (true) {
+                    var buffer = new byte[1024];
+                    var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
+                    var receivedMsg = Encoding.UTF8.GetString(buffer, 0, received);
+
+                    //msgCallback("[MSG] Receive message: " + receivedMsg);
+
+                    if (receivedMsg.StartsWith(fileToken))
+                    {
+
+                        String filePath = receivedMsg.Replace(fileToken, "");
+
+                        this.requstFile = filePath;
+                        clientCallback(TextType.RequestFile, filePath);
+
+                        checkFileExist(handler, filePath, msgCallback);
+
+                    }
+                    else if (receivedMsg.StartsWith(getToken))
+                    {
+                        // Prepare to send file bytes
+                        String filePath = receivedMsg.Replace(getToken, "");
+                        sendFile(handler, filePath, msgCallback);
+                    }
+                    else if (receivedMsg.Equals(eofToken))
+                    {
+                        msgCallback("[Info] Receive EOF token. END client communication.");
+                        break;
+                    }
+                    else if (receivedMsg.Equals("")) {
+                        Thread.Sleep(300);
+                    }
+                    else { 
+                        msgCallback("[ERROR] Invalid client request");
+                    }
+                }
             }
-            msgCallback("[MSG] Client connect ...");
 
-            while (this.working) {
-                var buffer = new byte[1024];
-                var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
-                var receivedMsg = Encoding.UTF8.GetString(buffer, 0, received);
-
-                //msgCallback("[MSG] Receive message: " + receivedMsg);
-
-                if (receivedMsg.StartsWith(fileToken))
-                {
-
-                    String filePath = receivedMsg.Replace(fileToken, "");
-
-                    this.requstFile = filePath;
-                    clientCallback(TextType.RequestFile, filePath);
-
-                    checkFileExist(handler, filePath, msgCallback);
-
-                }
-                else if (receivedMsg.StartsWith(getToken))
-                {
-                    // Prepare to send file bytes
-                    String filePath = receivedMsg.Replace(getToken, "");
-                    sendFile(handler, filePath, msgCallback);
-                }
-                else if (receivedMsg.Equals("")) {
-                    Thread.Sleep(300);
-                } else { 
-                    msgCallback("[ERROR] Invalid client request");
-                }
-            }
-
-            msgCallback("[MSG] Server stop working.");
+            msgCallback("[Info] Server stop working.");
         }
         private Boolean checkFileExist(Socket handler, String filePath, MessageCallback msgCallback) {
             
@@ -118,9 +126,9 @@ namespace winFormServer
                 totalBytes += fileSentBytes;
             }
 
-            msgCallback("[MSG] Success sent file. #bytes: " + totalBytes.ToString());
+            msgCallback("[Info] Success sent file. #bytes: " + totalBytes.ToString());
 
-            this.sendResponse(handler, eofToken);
+            this.sendResponse(handler, okToken);
             return true;
         }
 
@@ -129,7 +137,7 @@ namespace winFormServer
             var sentBytes = socket.Send(bytes, SocketFlags.None);
 
             Boolean sent = (sentBytes > 0);
-            Debug.WriteLine("[SERV][MSG] did sendResponse: " + response);
+            Debug.WriteLine("[SERV][Info] did sendResponse: " + response);
 
             return sent;
         }

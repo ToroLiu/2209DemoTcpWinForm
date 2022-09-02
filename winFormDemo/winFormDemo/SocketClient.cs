@@ -50,20 +50,30 @@ namespace winFormClient
 
             Socket client = this.socket;
 
-            IPEndPoint endPoint = createIPEndPoint(this.ip, this.port);
-            await client.ConnectAsync(endPoint);
+            try
+            {
+                IPEndPoint endPoint = createIPEndPoint(this.ip, this.port);
+                await client.ConnectAsync(endPoint);
 
-            // Stage 1, Request server file
-            var sendOk = await this.sendMessage(client, fileToken, this.fileName, true, msgCallback);
-            if (sendOk == false) {
-                return;
+                // Stage 1, Request server file
+                var sendOk = await this.sendMessage(client, fileToken, this.fileName, true, msgCallback);
+                if (sendOk == false)
+                {
+                    return;
+                }
+
+                // Stage 2, Download file data
+                await this.downloadFile(client, msgCallback);
+
+                // Stage 3, Notify Server EOF
+                _ = await this.sendMessage(client, eofToken, "", false, msgCallback);
+
+                client.Shutdown(SocketShutdown.Both);
             }
-
-            // Stage 2, Download file data
-            await this.downloadFile(client, msgCallback);
-
-            client.Shutdown(SocketShutdown.Both);
-            client.Disconnect(true);
+            catch (Exception e)
+            {
+                msgCallback("[ERROR] Exception: " + e.Message);
+            }
         }
         
         private async Task<Boolean> sendMessage(Socket client, String token, String msg, Boolean chkResp, MessageDelegate msgCallback) { 
@@ -78,7 +88,7 @@ namespace winFormClient
                 return false;            
             }
 
-            msgCallback("[MSG] Socket client send message: " + sendMessage);
+            msgCallback("[Info] Socket client send message: " + sendMessage);
 
             if (chkResp == false) {
                 return true;
@@ -88,7 +98,7 @@ namespace winFormClient
             var received = await client.ReceiveAsync(respBuf, SocketFlags.None);
             var receivedMsg = Encoding.UTF8.GetString(respBuf, 0, received);
             if (receivedMsg.IndexOf(okToken) > -1) {
-                msgCallback("[MSG] Server response OK. " + receivedMsg);
+                msgCallback("[Info] Server response OK. " + receivedMsg);
                 return true;
             }
 
@@ -97,7 +107,7 @@ namespace winFormClient
         }
 
         private async Task<Boolean> downloadFile(Socket client, MessageDelegate msgCallback) {
-            msgCallback("[MSG] Prepare to receive data");
+            msgCallback("[Info] Prepare to receive data");
 
             String fName = Path.GetFileName(this.fileName);
             String destPath = Path.Combine(this.localFilePath, fName);
@@ -116,8 +126,8 @@ namespace winFormClient
                     var fileReceived = await client.ReceiveAsync(fileBuf, SocketFlags.None);
                     var receivdMsg = Encoding.UTF8.GetString(fileBuf, 0, fileReceived);
 
-                    if (receivdMsg != null && receivdMsg.Equals(eofToken)) {
-                        msgCallback("[MSG] Receive EOF Token.");
+                    if (receivdMsg != null && receivdMsg.Equals(okToken)) {
+                        msgCallback("[Info] Receive OK Token. End of downloading");
                         break;
                     }
                     totalReceived += fileReceived;
@@ -129,12 +139,12 @@ namespace winFormClient
                 }
                 catch (Exception ex)
                 {
-                    msgCallback("[MSG] Failed to download file. Exception. " + ex.Message);
+                    msgCallback("[Info] Failed to download file. Exception. " + ex.Message);
                     return false;
                 }
             } while (true);
             
-            msgCallback("[MSG] Success to download file. total #bytes: " + totalReceived.ToString());
+            msgCallback("[Info] Success to download file. total #bytes: " + totalReceived.ToString());
             return true;
         }
     }
