@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using winFormDemo;
 
-namespace winFormServer
+namespace DemoServer
 {
     public partial class FormServer : Form
     {
@@ -14,7 +15,6 @@ namespace winFormServer
         private async void Form1_Load(object sender, EventArgs e)
         {
             this.server = new SocketServer();
-
             await Task.Run(() => this.server.startServer(this.messageCallback, this.clientCallback));
         }
 
@@ -50,7 +50,6 @@ namespace winFormServer
                 textBox.Text = text;
             }
         }
-        
         private void btnStop_Click(object sender, EventArgs e)
         {
             this.server.stopServer();
@@ -58,6 +57,7 @@ namespace winFormServer
 
         private void Form_Closing(object sender, FormClosingEventArgs e)
         {
+            Debug.WriteLine("Server Form Closing.");
             this.server.stopServer();
         }
     }

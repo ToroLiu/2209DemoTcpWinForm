@@ -9,13 +9,13 @@ namespace winFormDemo
 
         private void btnServer_Click(object sender, EventArgs e)
         {
-            winFormServer.FormServer form = new winFormServer.FormServer();
+            DemoServer.FormServer form = new DemoServer.FormServer();
             form.Show();
         }
 
         private void btnClient_Click(object sender, EventArgs e)
         {
-            winFormClient.FormClient form = new winFormClient.FormClient();
+            DemoClient.FormClient form = new DemoClient.FormClient();
             form.Show();
         }
     }

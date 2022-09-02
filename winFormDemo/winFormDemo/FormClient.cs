@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using winFormDemo;
 
-namespace winFormClient
+namespace DemoClient
 {
     public partial class FormClient : Form
     {
@@ -28,9 +29,15 @@ namespace winFormClient
             int portNumber = int.Parse(port);
 
             Debug.WriteLine("ip: " + ip + ", port: " + port + ", fileName: " + fileName + ", localPath: " + localPath);
-            this.socketClient = new SocketClient(ip, portNumber, fileName, localPath);
 
-            this.socketClient.startRequest(this.messageDelegate);
+            try
+            {
+                this.socketClient = new SocketClient(ip, portNumber, fileName, localPath);
+                this.socketClient.startRequest(this.messageDelegate);
+            }
+            catch (Exception ex) {
+                this.messageDelegate("[ERROR] Exception. " + ex.Message);
+            }
         }
 
         void messageDelegate(String message) {

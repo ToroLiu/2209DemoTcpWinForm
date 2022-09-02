@@ -1,4 +1,4 @@
-﻿namespace winFormServer
+﻿namespace DemoServer
 {
     partial class FormServer
     {

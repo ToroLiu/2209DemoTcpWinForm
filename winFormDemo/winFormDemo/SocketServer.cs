@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace winFormServer
+namespace winFormDemo
 {
     public delegate void MessageCallback(String message);
     public enum TextType { 
@@ -15,13 +15,13 @@ namespace winFormServer
     }
     public delegate void ClientCallback(TextType type, String text);
 
-    internal class SocketServer
+    public class SocketServer
     {
         private String clientIP;
         private int clientPort;
         private String requstFile;
 
-        private readonly int serverPort = 8080;
+        private int serverPort = 8080;
 
         private readonly String okToken = "<|OK|>";
         private readonly String fileToken = "<|FILE|>";
@@ -29,7 +29,12 @@ namespace winFormServer
         private readonly String eofToken = "<|EOF|>";
 
         private Boolean working = true;
-        public SocketServer() { }
+        public SocketServer() {
+            this.serverPort = 8080;
+        }
+        public SocketServer(int port) {
+            this.serverPort = port;
+        }
 
         public void stopServer() {
             this.working = false;
@@ -38,7 +43,7 @@ namespace winFormServer
         public async void startServer(MessageCallback msgCallback, ClientCallback clientCallback) { 
           
             using Socket listener = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            
+
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, serverPort);
             listener.Bind(endPoint);
             listener.Listen(100);
@@ -58,7 +63,7 @@ namespace winFormServer
                 }
                 msgCallback("[Info] Client connected ...");
 
-                while (true) {
+                while (true && this.working) {
                     var buffer = new byte[1024];
                     var received = await handler.ReceiveAsync(buffer, SocketFlags.None);
                     var receivedMsg = Encoding.UTF8.GetString(buffer, 0, received);
@@ -96,7 +101,10 @@ namespace winFormServer
                 }
             }
 
-            msgCallback("[Info] Server stop working.");
+            listener.Shutdown(SocketShutdown.Both);
+            listener.Disconnect(false);
+            
+            Debug.WriteLine("[Info] Server stop working.");
         }
         private Boolean checkFileExist(Socket handler, String filePath, MessageCallback msgCallback) {
             

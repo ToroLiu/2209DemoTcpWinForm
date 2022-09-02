@@ -1,4 +1,4 @@
-﻿namespace winFormClient
+﻿namespace DemoClient
 {
     partial class FormClient
     {

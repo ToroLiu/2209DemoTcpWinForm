@@ -6,11 +6,11 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace winFormClient
+namespace winFormDemo
 {
     public delegate void MessageDelegate(String message);
 
-    internal class SocketClient
+    public class SocketClient
     {
         private String ip;
         private int port;
@@ -39,16 +39,9 @@ namespace winFormClient
             return new IPEndPoint(ipAddress, port);
         }
 
-        private Socket socket = null;
-
-
         public async void startRequest(MessageDelegate msgCallback) {
-
-            if (this.socket == null) { 
-                this.socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            }
-
-            Socket client = this.socket;
+      
+            Socket client = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             try
             {
@@ -112,7 +105,7 @@ namespace winFormClient
             String fName = Path.GetFileName(this.fileName);
             String destPath = Path.Combine(this.localFilePath, fName);
 
-            this.sendMessage(client, getToken, this.fileName, false, msgCallback);
+            _ = await this.sendMessage(client, getToken, this.fileName, false, msgCallback);
 
             using FileStream destStream = new(destPath, FileMode.Create);
 
