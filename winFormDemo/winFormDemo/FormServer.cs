@@ -20,24 +20,37 @@ namespace winFormServer
 
         public void messageCallback(String message) {
 
-            Debug.WriteLine(message);
+            Debug.WriteLine("[SERV]" + message);
         }
         public void clientCallback(TextType type, String text) {
             switch (type) {
                 case TextType.ClientIp:
-                    this.textBox_ClientIP.Text = text;
+                    this.updateText(this.textBox_ClientIP, text);
+                    
                     break;
 
                 case TextType.ClientPort:
-                    this.textBox_Port.Text = text;
+                    this.updateText(this.textBox_Port, text);
                     break;
 
                 case TextType.RequestFile:
-                    this.textBox_RequestFile.Text = text;
+                    this.updateText(this.textBox_RequestFile, text);
                     break;
             }
         }
 
+        private void updateText(TextBox textBox, String text) {
+            if (textBox.InvokeRequired)
+            {
+                textBox.Invoke((MethodInvoker)(() => {
+                    textBox.Text = text;
+                }));
+            }
+            else {
+                textBox.Text = text;
+            }
+        }
+        
         private void btnStop_Click(object sender, EventArgs e)
         {
             this.server.stopServer();

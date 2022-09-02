@@ -2,6 +2,8 @@ namespace winFormClient
 {
     public partial class FormClient : Form
     {
+        private SocketClient _socketClient;
+
         public FormClient()
         {
             InitializeComponent();
