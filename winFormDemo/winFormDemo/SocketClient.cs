@@ -50,13 +50,12 @@ namespace winFormDemo
 
                 // Stage 1, Check file exist. Report error if file not found. 
                 var sendOk = await this.sendMessage(client, fileToken, fileName, true, msgCallback);
-                if (sendOk == false)
+                if (sendOk == true)
                 {
-                    return;
-                }
+                    // Stage 2, Download file data
+                    _ = await this.downloadFile(client, fileName, localFilePath, msgCallback);
 
-                // Stage 2, Download file data
-                _ = await this.downloadFile(client, fileName, localFilePath, msgCallback);
+                }
 
                 // Stage 3, Notify Server EOF
                 _ = await this.sendMessage(client, eofToken, "", false, msgCallback);
